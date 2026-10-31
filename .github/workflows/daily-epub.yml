@@ -1,0 +1,92 @@
+name: Daily RSS to ePub (Xteink X4 Pro)
+
+on:
+  schedule:
+    # Runs every day at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      max_articles:
+        description: "Maximum number of articles per feed (leave blank for feeds.yaml default)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "daily-epub-pipeline"
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate noticias_latest.epub and Pages index
+        env:
+          MAX_ARTICLES_INPUT: ${{ github.event.inputs.max_articles }}
+        run: |
+          if [ -n "$MAX_ARTICLES_INPUT" ]; then
+            python main.py --output-dir dist --filename noticias_latest.epub --max-articles "$MAX_ARTICLES_INPUT"
+          else
+            python main.py --output-dir dist --filename noticias_latest.epub
+          fi
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: noticias-latest-epub
+          path: dist/noticias_latest.epub
+          retention-days: 7
+
+      - name: Publish rolling GitHub Release (noticias_latest.epub)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="latest"
+          TITLE="Prensa Diaria ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          NOTES="Automated daily ePub build optimized for the Xteink X4 Pro."
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" dist/noticias_latest.epub --clobber
+            gh release edit "$TAG_NAME" --title "$TITLE" --notes "$NOTES"
+          else
+            gh release create "$TAG_NAME" dist/noticias_latest.epub \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              --latest
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        continue-on-error: true
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true

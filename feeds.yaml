@@ -1,0 +1,28 @@
+settings:
+  title_prefix: "Prensa Diaria"
+  language: "es"
+  author: "FeedToInk Automated Press"
+  max_articles_per_feed: 5
+  request_timeout: 15
+  include_images: false
+
+feeds:
+  - name: "El País - Opinión"
+    url: "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada"
+    category: "Opinión y Análisis"
+
+  - name: "elDiario.es - Portada"
+    url: "https://www.eldiario.es/rss/"
+    category: "Actualidad"
+
+  - name: "Letras Libres"
+    url: "https://letraslibres.com/feed/"
+    category: "Cultura y Ensayo"
+
+  - name: "El Confidencial - España"
+    url: "https://rss.elconfidencial.com/espana/"
+    category: "Actualidad"
+
+  - name: "CTXT - Contexto y Acción"
+    url: "https://ctxt.es/es/rss/rss.xml"
+    category: "Opinión y Análisis"
